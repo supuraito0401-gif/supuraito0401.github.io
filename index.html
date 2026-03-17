@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>リハビリSOAP AI</title>
+</head>
+
+<body>
+
+<h2>リハビリ SOAP AI ツール</h2>
+
+<h3>S（主訴）</h3>
+<input type="text" id="subjective" style="width:300px">
+
+<h3>リハビリ中の会話</h3>
+
+<button onclick="startRecognition()">録音開始</button>
+<button onclick="stopRecognition()">録音停止</button>
+
+<p id="transcript"></p>
+
+<br>
+<button onclick="generateO()">O生成（AI要約）</button>
+
+<h3>結果</h3>
+<pre id="result"></pre>
+
+<script>
+
+let recognition = new webkitSpeechRecognition();
+recognition.lang = "ja-JP";
+recognition.continuous = true;
+
+let text = "";
+
+recognition.onresult = function(event){
+
+for(let i = event.resultIndex; i < event.results.length; i++){
+
+text += event.results[i][0].transcript + " ";
+
+}
+
+document.getElementById("transcript").innerText = text;
+
+}
+
+function startRecognition(){
+
+text = "";
+recognition.start();
+
+}
+
+function stopRecognition(){
+
+recognition.stop();
+
+}
+
+async function generateO(){
+
+let s = document.getElementById("subjective").value;
+let conversation = document.getElementById("transcript").innerText;
+
+let prompt = `
+あなたは理学療法士です。
+以下のリハビリ中の会話をSOAPのO（客観所見）としてカルテ文章に変換してください。
+
+条件
+・医療カルテ風
+・簡潔
+・実施内容も補完
+
+会話:
+${conversation}
+`;
+
+let response = await fetch("https://api.openai.com/v1/chat/completions",{
+
+method:"POST",
+headers:{
+"Content-Type":"application/json",
+Authorization: "Bearer " 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"
+},
+
+body:JSON.stringify({
+
+model:"gpt-4o-mini",
+messages:[{role:"user",content:prompt}],
+temperature:0.2
+
+})
+
+});
+
+let data = await response.json();
+
+let o = data.choices[0].message.content;
+
+let soap =
+"S: " + s + "\n\n" +
+"O: " + o + "\n\n" +
+"A: 機能改善目的でリハビリ実施\n\n" +
+"P: リハビリ継続";
+
+document.getElementById("result").innerText = soap;
+
+}
+
+</script>
+
+</body>
+</html>
